@@ -1,0 +1,54 @@
+name: portainer
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+    compress: "true"
+
+services:
+  portainer:
+    image: portainer/portainer-ce:${PORTAINER_TAG:-2.45.1-alpine}
+    container_name: portainer
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: "${TZ:-Europe/Athens}"
+    ports:
+      - "127.0.0.1:9443:9443"
+      - "${PORTAINER_TUNNEL_BIND:-0.0.0.0}:8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--no-check-certificate", "https://127.0.0.1:9443/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+      start_interval: 5s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          # noinspection ComposeUnknownValues
+          cpus: "${PORTAINER_CPU_LIMIT:-1.0}"
+          # noinspection ComposeUnknownValues
+          memory: "${PORTAINER_MEMORY_LIMIT:-512m}"
+          # noinspection ComposeUnknownValues
+          pids: ${PORTAINER_PIDS_LIMIT:-200}
+        reservations:
+          # noinspection ComposeUnknownValues
+          memory: "${PORTAINER_MEMORY_RESERVATION:-128m}"
+
+networks:
+  default:
+    name: portainer
+
+volumes:
+  data:
+    name: portainer
